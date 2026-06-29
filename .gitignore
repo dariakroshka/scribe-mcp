@@ -1,0 +1,18 @@
+node_modules/
+build/
+.env
+*.extracted.mp3
+
+# OS cruft
+.DS_Store
+
+# Local data / fixtures — not part of the published MCP (org-internal)
+glossary.txt
+pages.txt
+test_script/
+
+# Media artifacts
+*.mp4
+*.mp3
+*.wav
+*.m4a
