@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "bun src/index.ts",
-    "cli": "bun src/cli.ts"
+    "cli": "bun src/cli.ts",
+    "smoke": "bun scripts/smoke.ts"
   },
   "dependencies": {
     "@ffprobe-installer/ffprobe": "^2.1.2",
@@ -22,7 +23,6 @@
     "typescript": "^5.7.0"
   },
   "trustedDependencies": [
-    "ffmpeg-static",
-    "@ffprobe-installer/ffprobe"
+    "ffmpeg-static"
   ]
 }

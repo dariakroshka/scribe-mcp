@@ -8,5 +8,16 @@
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeInstaller from "@ffprobe-installer/ffprobe";
 
-export const FFMPEG: string = (ffmpegStatic as string | null) ?? "ffmpeg";
-export const FFPROBE: string = ffprobeInstaller?.path ?? "ffprobe";
+function resolveBinary(bundled: string | null | undefined, name: string): string {
+  if (bundled) return bundled;
+  // stderr, not stdout — this is a stdio MCP. Surface the fallback here rather
+  // than letting it fail later as a bare ENOENT three files away at a spawn.
+  process.stderr.write(
+    `[scribe] bundled ${name} unavailable for ${process.platform}/${process.arch}; ` +
+      `falling back to \`${name}\` on PATH\n`,
+  );
+  return name;
+}
+
+export const FFMPEG: string = resolveBinary(ffmpegStatic as string | null, "ffmpeg");
+export const FFPROBE: string = resolveBinary(ffprobeInstaller?.path, "ffprobe");
