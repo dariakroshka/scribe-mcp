@@ -5,6 +5,7 @@ import { transcribe, createClient } from "./gemini.js";
 import { mimeFromPath, type Transcript } from "./types.js";
 import { formatMarkdown } from "./format.js";
 import { scribePage } from "./notion.js";
+import { FFPROBE } from "./bins.js";
 
 const server = new McpServer({
   name: "scribe",
@@ -132,7 +133,7 @@ server.tool(
       let durationSec = 0;
       try {
         const proc = Bun.spawn(
-          ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", filePath],
+          [FFPROBE, "-v", "quiet", "-print_format", "json", "-show_format", filePath],
           { stdout: "pipe", stderr: "pipe" }
         );
         const out = await new Response(proc.stdout).text();

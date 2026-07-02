@@ -15,15 +15,17 @@ Long recordings are automatically split into 10-minute audio chunks via ffmpeg t
 ## Prerequisites
 
 - [Bun](https://bun.sh) runtime
-- [ffmpeg](https://ffmpeg.org/) and ffprobe (for chunking and duration detection)
 - Gemini API key (`GEMINI_API_KEY`)
 - Notion integration token (`NOTION_API_KEY`) — for Notion mode only
+
+`ffmpeg`/`ffprobe` are **bundled** (see [Bundled media toolchain](#bundled-media-toolchain)) — no system install required. Downloads/HTTP use Bun's native `fetch`, so `curl` isn't needed either.
 
 ## Setup
 
 ```bash
 git clone <repo-url> && cd scribe-mcp
 bun install
+bun run smoke   # optional: verify the bundled ffmpeg/ffprobe resolved and run
 cp .env.example .env
 # Edit .env with your API keys
 ```
@@ -193,6 +195,17 @@ When both sources are set, wiki content is prepended to the local file content.
 | `NOTION_API_KEY` | For Notion modes | Notion integration token |
 | `SCRIBE_GLOSSARY_PATH` | No | Path to local glossary file |
 | `SCRIBE_GLOSSARY_URL` | No | MediaWiki page URL for glossary (auto-refreshes every 30min in MCP mode) |
+
+## Bundled media toolchain
+
+`ffmpeg`/`ffprobe` ship with the package rather than being required on `PATH`, so consumers (Docker images, agent recipes, ops runbooks) don't have to provide them out of band — `bun install` is sufficient. `bun run smoke` verifies they resolved.
+
+The two binaries have **different supply-chain properties**, worth knowing before you ship this somewhere sensitive:
+
+- **`@ffprobe-installer/ffprobe`** ships the ffprobe binary *inside* per-platform npm packages, so every byte is covered by the lockfile's `sha512` integrity hash.
+- **`ffmpeg-static`** ships a small install script that downloads the ffmpeg binary from a GitHub release at install time. The lockfile hashes the ~3 KB npm tarball, **not** the ~78 MB binary it fetches — i.e. it's an unverified HTTPS download from a third-party maintainer's release page (pinned version → fixed asset URL). This is a deliberate trade: `ffmpeg-static` ships **ffmpeg 7.x**, whereas `@ffmpeg-installer/ffmpeg` (the symmetric choice) is stuck on the **4.x** vintage. If you need download integrity, add a post-install `sha256` check against a pinned digest, or vendor the binary.
+
+`trustedDependencies` lists **only** `ffmpeg-static` — it's the one with an install script that bun must be allowed to run; `@ffprobe-installer/ffprobe` has no lifecycle script (its binary is already in the tarball). On an unsupported platform, `bins.ts` logs a stderr warning and falls back to `ffmpeg`/`ffprobe` on `PATH`.
 
 ## Connectome-host integration
 
