@@ -6,6 +6,7 @@ import {
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { unlink } from "node:fs/promises";
 import { MetadataSchema, KnowledgeSchema, type KnowledgeItem, type Transcript, mimeFromPath } from "./types.js";
+import { FFMPEG, FFPROBE } from "./bins.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const POLL_INTERVAL_MS = 5_000;
@@ -34,7 +35,7 @@ export async function createClient(apiKey?: string): Promise<GoogleGenAI> {
 
 async function getMediaDuration(filePath: string): Promise<number> {
   const proc = Bun.spawn(
-    ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", filePath],
+    [FFPROBE, "-v", "quiet", "-print_format", "json", "-show_format", filePath],
     { stdout: "pipe", stderr: "pipe" }
   );
   const out = await new Response(proc.stdout).text();
@@ -58,7 +59,7 @@ async function extractAudioChunks(
 
     const proc = Bun.spawn(
       [
-        "ffmpeg", "-i", inputPath,
+        FFMPEG, "-i", inputPath,
         "-ss", String(start),
         "-t", String(CHUNK_DURATION_SEC),
         "-vn", "-acodec", "libmp3lame", "-q:a", "4",
@@ -81,7 +82,7 @@ async function extractFullAudio(inputPath: string, onStatus?: (status: string) =
   const outputPath = inputPath.replace(/\.[^.]+$/, ".meta_audio.mp3");
   onStatus?.("Extracting audio track for metadata (video too large)...");
   const proc = Bun.spawn(
-    ["ffmpeg", "-i", inputPath, "-vn", "-acodec", "libmp3lame", "-q:a", "4", "-y", outputPath],
+    [FFMPEG, "-i", inputPath, "-vn", "-acodec", "libmp3lame", "-q:a", "4", "-y", outputPath],
     { stdout: "pipe", stderr: "pipe" },
   );
   const exitCode = await proc.exited;

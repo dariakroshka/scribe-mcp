@@ -106,26 +106,25 @@ async function downloadFile(
   const dest = join(tmpdir(), `scribe_${Date.now()}_${name}`);
   onStatus?.(`Downloading ${name}...`);
 
+  // bun ships fetch — no need to shell out to curl. Follows redirects by
+  // default; 30-minute overall cap via AbortSignal.timeout; retries with the
+  // same backoff the curl loop had. (Resume-on-interrupt is dropped — the
+  // retry restarts the download, same as `curl -C -` did on a fresh file.)
   const maxRetries = 5;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const args = [
-      "curl", "-fSL",
-      "--max-time", "1800",
-      "--connect-timeout", "30",
-      "-C", "-",
-      "-o", dest,
-      url,
-    ];
-    const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe" });
-    const exitCode = await proc.exited;
-    if (exitCode === 0) break;
-
-    const stderr = await new Response(proc.stderr).text();
-    if (attempt === maxRetries - 1) {
-      throw new Error(`Download failed after ${maxRetries} attempts (curl exit ${exitCode}): ${stderr.slice(-300)}`);
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(1_800_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      await Bun.write(dest, res);
+      break;
+    } catch (err) {
+      if (attempt === maxRetries - 1) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`Download failed after ${maxRetries} attempts: ${msg}`);
+      }
+      onStatus?.(`Download interrupted, retrying (${attempt + 2}/${maxRetries})...`);
+      await Bun.sleep(3000);
     }
-    onStatus?.(`Download interrupted, retrying (${attempt + 2}/${maxRetries})...`);
-    await Bun.sleep(3000);
   }
 
   const size = Bun.file(dest).size;
